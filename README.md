@@ -21,7 +21,7 @@ MLS-MPM is also extremely flexible in the types of particle simulations you can 
 
 ## Rendering
 
-The rendering is heavily inspired by the [screen-space rendering video](https://github.com/SebLague/Fluid-Sim) made by Sebastian Lague, which is inspired by the following Nvidia 
+The rendering is heavily inspired by the [screen-space rendering video](https://www.youtube.com/watch?v=kOkfC5fLfgE) made by Sebastian Lague, which is inspired by the following Nvidia 
 [slides](https://developer.download.nvidia.com/presentations/2010/gdc/Direct3D_Effects.pdf) by Simon Green on real-time screen space rendering.
 
 At a high-level, the rendering is implemented as follow:
