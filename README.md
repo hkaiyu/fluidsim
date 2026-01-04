@@ -8,12 +8,7 @@ A WIP fluid simulation written using C++ and Vulkan.
 ## Simulation
 
 The simulation itself uses the MLS-MPM algorithm (GitHub link [here](https://github.com/yuanming-hu/taichi_mpm)) and is mainly implemented in compute shaders.
-There are mainly three types of fluid simulations: Lagrangian (particle-based), Eulerian (grid-based), and hybrid Lagrangian-Eulerian approaches. Each have pros and cons. Lagrangian methods follow the intuitive sense of fluid being treated
-as many small particles. This method is very accurate at tracking particles but also computationally expensive as each particle typically calculates interactions with particles in some neighborhood. Eulerian approaches use a grid to track
-details such as density and velocity of a fluid rather than the particles themselves. Eulerian methods can be quite efficient, but require grids with high resolution to obtain fine details (and thus very high memory footprint).
-Hybrid approaches use both grids and particles to simulate different parts of the physics. 
-
-MLS-MPM is a hybrid approach that broadly can be split up into the following stages:
+MLS-MPM is a hybrid Eulerian (grid-based) and Lagrangian (particle-based) approach that broadly can be split up into the following stages:
 
 + Clear grid: We first need to zero out the grid cells.
 + Particle-to-Grid (P2G): After particles are initialized with some state, P2G scatters each particle's data into a grid containing accumulated information about the particles which get mapped to that grid cell.
@@ -41,7 +36,7 @@ Beer's law.
 ## Other Implementation Details
 
 This project is mainly me testing out a bunch of newer Vulkan features such as descriptor buffers, buffer device addresses, and bindless descriptors. I also tried out the Slang shading language for my shaders. I use GLM for math,
-ImGui for immediate-mode UI, Vulkan Memory Allocator for GPU allocation, Volk for loading Vulkan functions, and GLFW for window/input handling. I also am looking at  
+ImGui for immediate-mode UI, Vulkan Memory Allocator for GPU allocation, Volk for loading Vulkan functions, and GLFW for window/input handling.
 
 ## Building
 
