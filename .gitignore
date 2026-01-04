@@ -1,0 +1,11 @@
+# build directory
+build
+
+# ignore my personal scripts 
+build.bat
+
+# ignore shader spirv
+shaders/bin
+
+# ignore spirv disassembly
+*.spvasm
