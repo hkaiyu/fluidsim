@@ -490,20 +490,20 @@ RenderFluid(VkCommandBuffer cmd, VkDeviceAddress cameraData)
     ImageDependency toRender[] = {
         {
             .image = &thicknessImage,
-            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             .access = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
             .stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
         },
         {
             .image = depthImage.read(),
-            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             .access = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
             .stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
         },
         {
             .image = &renderImage,
             .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .access = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            .access = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
             .stage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         }
     };
@@ -542,6 +542,13 @@ RenderFluid(VkCommandBuffer cmd, VkDeviceAddress cameraData)
 internal void
 RenderBillboards(VkCommandBuffer cmd, VkDeviceAddress cameraData)
 {
+    ImageDependency requireDepth = {
+        .image  = &depthBuffer,
+        .layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        .access = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+        .stage  = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+    };
+    CmdPipelineBarrier(cmd, { .imageDependencyCount = 1, .pImageDependencies = &requireDepth });
     struct {
         u64 cameraAddr;
         u64 paramsAddr;
@@ -590,8 +597,5 @@ SimulationAdvanceAndRenderImage(VkCommandBuffer cmd, f32 dt, VkDeviceAddress cam
     return &renderImage;
 }
 
-SimParams *SimulationGetParams() { return &params; }
-
 u32 SimulationGetParticleCount() { return nparticles; }
-
 void SimulationTogglePause() { simulationPaused = !simulationPaused; }

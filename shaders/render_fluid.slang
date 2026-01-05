@@ -59,6 +59,24 @@ bool IntersectBox(float3 pos, float3 dir, float3 AA, float3 BB, out float tNear,
     return tFar > max(tNear, 0.0);
 }
 
+void GetFloorBounds(out float3 AA, out float3 BB)
+{
+    const float3 size = float3(300, 1, 300);
+    const float2 centerXZ = params->bounds.xz * 0.5;
+    const float3 centerFloor = float3(centerXZ.x, -size.y * 0.5, centerXZ.y);
+    const float3 offset = size * 0.5;
+    AA = centerFloor - offset;
+    BB = centerFloor + offset;
+}
+
+float3 SampleFloor(float3 pos)
+{
+    float scale = 0.1;
+    int2 c = int2(floor(pos.xz * scale));
+    bool checker = ((c.x + c.y) & 1) == 0;
+    return checker ? float3(0.1) : float3(0.9);
+}
+
 float3 SampleSky(float3 dir)
 {
     // TODO: different sky color
@@ -68,22 +86,13 @@ float3 SampleSky(float3 dir)
 
 float3 SampleEnvironment(float3 pos, float3 dir)
 {
-    const float fHeight = 1.0;
-    const float fWidth = 300.0;
-    const float fDepth = 300.0;
-    const float3 centerXZ = float3(params->bounds) * float3(0.5, 0.0, 0.5);
-    const float3 offset = float3(fWidth, fHeight, fDepth) * 0.5f;
-    const float3 floorAA = centerXZ - float3(offset.x, fHeight, offset.z);
-    const float3 floorBB = centerXZ + float3(offset.x, 0.0f, offset.z);
+    float3 floorAA, floorBB; GetFloorBounds(floorAA, floorBB);
 
     float tNear, tFar;
     if (IntersectBox(pos, dir, floorAA, floorBB, tNear, tFar))
     {
-        // hit floor
         float3 hit = pos + dir * tNear;
-        float scale = 0.1;
-        int3 c = int3(floor(hit * scale));
-        return ((c.x + c.z) & 1) == 0 ? float3(0.2, 0.2, 0.2) : float3(0.8, 0.8, 0.8);
+        return SampleFloor(hit);
     }
     return SampleSky(dir);
 }
@@ -132,16 +141,21 @@ float4 RenderFluid(VSOut i) : SV_TARGET
     float3 viewRay = ViewRayFromScreen(uv);
 
     // no fluid in this pixel
-    if (depth <= 0.0 || thickness <= 1e-6) return float4(SampleEnvironment(pos, viewRay), 1.0);
+    if (depth <= 0.0 || thickness <= 0.1) return float4(SampleEnvironment(pos, viewRay), 1.0);
 
-    // miss simulation bounds
-    float tNear, tFar;
-    if (!IntersectBox(pos, viewRay, 0.0, p->bounds, tNear, tFar)) return float4(SampleEnvironment(pos, viewRay), 1.0);
-
-    // box behind camera
-    if (tFar <= 0.0) return float4(SampleEnvironment(pos, viewRay), 1.0);
+    float tNearSim, tFarSim;
+    bool simHit = IntersectBox(pos, viewRay, 0.0, params->bounds, tNearSim, tFarSim);
+    if (!simHit || tFarSim <= 0.0) return float4(SampleEnvironment(pos, viewRay), 1.0);
 
     // otherwise, fluid has been hit
+    float3 hitDepth = depth * viewRay;
+    float3 hitPos = pos + hitDepth;
+
+    float tNearFloor, tFarFloor;
+    float3 fAA, fBB; GetFloorBounds(fAA, fBB);
+    bool floorHit = IntersectBox(pos, viewRay, fAA, fBB, tNearFloor, tFarFloor);
+    if (floorHit && tNearFloor < length(hitDepth))
+        return float4(SampleFloor(pos + viewRay * tNearFloor), 1.0);
 
     // normal calculation
     // TODO: normal approximation could be improved...
@@ -150,7 +164,6 @@ float4 RenderFluid(VSOut i) : SV_TARGET
     float depthUp = depthTex.Sample(s, uv + float2(0, texel.y));
     float3 rayRight = ViewRayFromScreen(uv + float2(texel.x, 0));
     float3 rayUp = ViewRayFromScreen(uv + float2(0, texel.y));
-    float3 hitDepth = depth * viewRay;
     float3 dx = depthRight * rayRight;
     float3 dy = depthUp * rayUp;
     float3 N = normalize(cross(dx - hitDepth, dy - hitDepth));
@@ -167,7 +180,6 @@ float4 RenderFluid(VSOut i) : SV_TARGET
     LightResponse lightResponse = CalculateReflectionAndRefraction(viewRay, N, 1, 1.33);
     float3 reflectDir = reflect(viewRay, N);
 
-    float3 hitPos = pos + hitDepth;
     float3 exitPos = hitPos + lightResponse.refractDir * smoothThickness * p->refractMultiplier;
 
     float3 transmission = exp(-smoothThickness * p->extinctionCoeff);

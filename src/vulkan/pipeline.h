@@ -4,6 +4,13 @@
 
 #include "shaders.h"
 
+struct GraphicsPipelineAttachmentInfo
+{
+    // TODO: graphics pipeline needs to add per-attachment info too
+    // - blend state
+    // - format
+};
+
 struct GraphicsPipelineInfo
 {
     CompiledSpirvShader vert{};
