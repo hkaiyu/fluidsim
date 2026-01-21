@@ -2,8 +2,8 @@
 
 A WIP fluid simulation written using C++ and Vulkan. 
 
-<img width="400" height="270" alt="screen-space-fluid" src="https://github.com/user-attachments/assets/ea22daa6-fa1d-4936-9e21-5e5ad1243cb1" />
-<img width="400" height="270" alt="billboard-fluid" src="https://github.com/user-attachments/assets/9bdeeac4-4f1c-459a-b196-7fca6dfd447d" />
+![final](https://github.com/user-attachments/assets/92d385e2-7eaf-4d36-9631-f97ceae3141e)
+
 
 ## Simulation
 
@@ -23,6 +23,9 @@ MLS-MPM is also extremely flexible in the types of particle simulations you can 
 
 The rendering is heavily inspired by the [screen-space rendering video](https://www.youtube.com/watch?v=kOkfC5fLfgE) made by Sebastian Lague, which is inspired by the following Nvidia 
 [slides](https://developer.download.nvidia.com/presentations/2010/gdc/Direct3D_Effects.pdf) by Simon Green on real-time screen space rendering.
+
+<img width="400" height="270" alt="billboard-fluid" src="https://github.com/user-attachments/assets/9bdeeac4-4f1c-459a-b196-7fca6dfd447d" />
+<img width="400" height="270" alt="screen-space-fluid" src="https://github.com/user-attachments/assets/ea22daa6-fa1d-4936-9e21-5e5ad1243cb1" />
 
 At a high-level, the rendering is implemented as follow:
 
