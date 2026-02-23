@@ -162,7 +162,6 @@ main(int argc, char* argv[])
     f32 dt = 0.0f;
     TimePoint lastTime = Clock::now();
     while (!glfwWindowShouldClose(window))
-    // for (int i = 0; i < 10; i++)
     {
         TimePoint now = Clock::now();
         dt = std::chrono::duration_cast<DurationSecs>(now - lastTime).count();
@@ -207,6 +206,20 @@ main(int argc, char* argv[])
             };
             CmdPipelineBarrier(cmd, { .imageDependencyCount = ARRAY_SIZE(blits), .pImageDependencies = blits });
             CmdBlitImage(cmd, render, swapchainImage, VK_FILTER_LINEAR);
+
+            VkViewport swapchainViewport{};
+            swapchainViewport.x = 0.0f;
+            swapchainViewport.y = (float) swapchainImage->extent.height;
+            swapchainViewport.width = (float) swapchainImage->extent.width;
+            swapchainViewport.height = -((float) swapchainImage->extent.height);
+            swapchainViewport.minDepth = 0.0f;
+            swapchainViewport.maxDepth = 1.0f;
+            vkCmdSetViewportWithCount(cmd, 1, &swapchainViewport);
+
+            VkRect2D swapchainScissor{};
+            swapchainScissor.offset = {0, 0};
+            swapchainScissor.extent = {swapchainImage->extent.width, swapchainImage->extent.height};
+            vkCmdSetScissorWithCount(cmd, 1, &swapchainScissor);
 
             // render overlay directly to swapchain
             ImageDependency renderOverlay[] = {

@@ -68,6 +68,73 @@ CreatePingPongImage(const ImageCreateInfo &info)
     return PingPongImage{.curr = 0, .images = {CreateImage(info), CreateImage(info)}};
 }
 
+internal VkExtent3D
+GetSimulationRenderExtent()
+{
+    const VkExtent2D swapchainExtent = VulkanGetSwapchainExtent();
+    return {swapchainExtent.width, swapchainExtent.height, 1};
+}
+
+internal void
+CreateSimulationRenderTargets(VkExtent3D extent)
+{
+    depthImage = CreatePingPongImage({
+        .imageType = VK_IMAGE_TYPE_2D,
+        .extent = extent,
+        .format = VK_FORMAT_R32_SFLOAT,
+        .isAttachment = true,
+        .isStorage = true,
+        .isSampled = true
+    });
+
+    thicknessImage = CreateImage({
+        .imageType = VK_IMAGE_TYPE_2D,
+        .extent = extent,
+        .format = VK_FORMAT_R32_SFLOAT,
+        .isAttachment = true,
+        .isStorage = true,
+        .isSampled = true
+    });
+
+    renderImage = CreateImage({
+        .imageType = VK_IMAGE_TYPE_2D,
+        .extent = extent,
+        .format = VulkanGetSwapchainFormat(), // keep as swapchain format
+        .isAttachment = true,
+    });
+
+    depthBuffer = CreateDepthAttachment(extent.width, extent.height);
+}
+
+internal bool
+NeedsSimulationRenderTargetResize(VkExtent3D desiredExtent)
+{
+    const VkExtent3D currExtent = depthImage.images[0].extent;
+    if ((currExtent.width != desiredExtent.width) || (currExtent.height != desiredExtent.height))
+        return true;
+
+    if (renderImage.format != VulkanGetSwapchainFormat())
+        return true;
+
+    return false;
+}
+
+internal void
+EnsureSimulationRenderTargets()
+{
+    const VkExtent3D desiredExtent = GetSimulationRenderExtent();
+    if (!NeedsSimulationRenderTargetResize(desiredExtent))
+        return;
+
+    DestroyImage(&depthImage.images[0]);
+    DestroyImage(&depthImage.images[1]);
+    DestroyImage(&thicknessImage);
+    DestroyImage(&depthBuffer);
+    DestroyImage(&renderImage);
+
+    CreateSimulationRenderTargets(desiredExtent);
+}
+
 internal void
 Compute2ComputeBarrier(VkCommandBuffer cmd)
 {
@@ -90,6 +157,24 @@ Compute2GraphicsBarrier(VkCommandBuffer cmd)
         .dstAccess = VK_ACCESS_2_MEMORY_READ_BIT,
     };
     CmdPipelineBarrier(cmd, {.memoryDependencyCount = 1, .pMemoryDependencies = &barrier});
+}
+
+internal void
+SetViewportScissorToExtent(VkCommandBuffer cmd, VkExtent3D extent)
+{
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = (float) extent.height;
+    viewport.width = (float) extent.width;
+    viewport.height = -((float) extent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewportWithCount(cmd, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = {0, 0};
+    scissor.extent = {extent.width, extent.height};
+    vkCmdSetScissorWithCount(cmd, 1, &scissor);
 }
 
 internal void
@@ -192,7 +277,7 @@ InitializeParams(glm::uvec3 bounds, Buffer *paramBuffer, SimParams *params)
     params->ncells = ncells;
 
     params->gravity = DEFAULT_GRAVITY_STRENGTH;
-    params->restDensity = 2.0f;
+    params->restDensity = 1.0f;
     params->dynamicViscosity = DEFAULT_VISCOSITY;
     params->eosStiffness = DEFAULT_EOS_STIFFNESS;
     params->eosPower = DEFAULT_EOS_POWER;
@@ -261,34 +346,7 @@ SimulationInit(glm::uvec3 bounds)
         .topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST
     });
 
-    VkExtent2D extent = VulkanGetSwapchainExtent();
-
-    depthImage = CreatePingPongImage({
-        .imageType = VK_IMAGE_TYPE_2D,
-        .extent = {extent.width, extent.height}, // TODO: resize on swapchain resize
-        .format = VK_FORMAT_R32_SFLOAT,
-        .isAttachment = true,
-        .isStorage = true,
-        .isSampled = true
-    });
-
-    thicknessImage = CreateImage({
-        .imageType = VK_IMAGE_TYPE_2D,
-        .extent = {extent.width, extent.height}, // TODO: resize on swapchain resize
-        .format = VK_FORMAT_R32_SFLOAT,
-        .isAttachment = true,
-        .isStorage = true,
-        .isSampled = true
-    });
-
-    renderImage = CreateImage({
-        .imageType = VK_IMAGE_TYPE_2D,
-        .extent = {extent.width, extent.height}, // TODO: resize on swapchain resize
-        .format = VulkanGetSwapchainFormat(), // keep as swapchain format
-        .isAttachment = true,
-    });
-
-    depthBuffer = CreateDepthAttachment(depthImage.images[0].extent.width, depthImage.images[0].extent.height);
+    CreateSimulationRenderTargets(GetSimulationRenderExtent());
     linearSamp = CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
 
     InitializeParams(bounds, &paramBuffer, &params);
@@ -300,8 +358,8 @@ SimulationInit(glm::uvec3 bounds)
     OverlayAddCombo("Gravity mode", (int *)&gravityMode, {"Normal", "Swirl", "Center"});
     OverlayAddCheckbox("Show simulation bounds", &showBounds);
     OverlayAddSliderFloat("EOS stiffness", &params.eosStiffness, 10.0f, 30.0f);
-    OverlayAddSliderFloat("EOS power", &params.eosPower, 0.5f, 2.0f);
-    OverlayAddSliderFloat("Viscosity", &params.dynamicViscosity, 0.1f, 2.0f);
+    OverlayAddSliderFloat("EOS power", &params.eosPower, 1.0f, 4.0f);
+    OverlayAddSliderFloat("Viscosity", &params.dynamicViscosity, 0.05f, 2.0f);
     OverlayAddSliderFloat("Range sigma", &rangeSigma, 1.0f, 10.0f);
     OverlayAddSliderFloat("Spatial sigma", &spatialSigma, 5.0f, 15.0f);
     OverlayAddSliderFloat("Kernel radius", &blurKernelRadius, 3.0f, 15.0f);
@@ -402,6 +460,8 @@ RenderDepthAndThickness(VkCommandBuffer cmd, VkDeviceAddress cameraData)
         .imageDependencyCount = ARRAY_SIZE(toRender),
         .pImageDependencies = toRender
     });
+
+    SetViewportScissorToExtent(cmd, depthImage.write()->extent);
 
     CmdBindGraphicsPipeline(cmd, renderDepth);
     CmdBeginRendering(cmd, {
@@ -510,6 +570,7 @@ RenderFluid(VkCommandBuffer cmd, VkDeviceAddress cameraData)
     CmdPipelineBarrier(cmd, { .imageDependencyCount = ARRAY_SIZE(toRender), .pImageDependencies = toRender });
 
     VkExtent3D e = renderImage.extent;
+    SetViewportScissorToExtent(cmd, e);
     struct {
         u64 cameraAddr;
         u64 paramsAddr;
@@ -559,6 +620,7 @@ RenderBillboards(VkCommandBuffer cmd, VkDeviceAddress cameraData)
         particleBuffer.gpuAddress,
     };
     CmdPushConstants(cmd, 0, sizeof(pc), &pc);
+    SetViewportScissorToExtent(cmd, renderImage.extent);
     CmdBindGraphicsPipeline(cmd, renderBillboards);
     CmdBeginRendering(cmd, {
         .colorAttachments = {{ .image = &renderImage }},
@@ -583,6 +645,7 @@ RenderBillboards(VkCommandBuffer cmd, VkDeviceAddress cameraData)
 Image *
 SimulationAdvanceAndRenderImage(VkCommandBuffer cmd, f32 dt, VkDeviceAddress cameraData)
 {
+    EnsureSimulationRenderTargets();
     AdvanceSimulation(cmd, dt);
     if (renderMethod == RenderMethod::ScreenSpace)
     {

@@ -656,7 +656,7 @@ SwapchainCreate()
         // fill out image struct
         // image.type = IMAGE_TYPE_SWAPCHAIN;
         image.handle = swapImages[i];
-        image.extent = {extent.width, extent.height, 0};
+        image.extent = {extent.width, extent.height, 1};
         image.format = imageFormat;
         image.lastLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     }

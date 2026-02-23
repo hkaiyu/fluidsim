@@ -79,9 +79,11 @@ float3 SampleFloor(float3 pos)
 
 float3 SampleSky(float3 dir)
 {
-    // TODO: different sky color
-    // for now, have this to easily visualize reflectance
-    return dir;
+    float t = saturate(dir.y * 0.5f + 0.5f);
+    float3 horizon = float3(0.55, 0.75, 1.0); // pale blue near horizon
+    float3 zenith  = float3(0.05, 0.25, 0.65); // deep blue overhead
+    t = pow(t, 0.8);
+    return lerp(horizon, zenith, t);
 }
 
 float3 SampleEnvironment(float3 pos, float3 dir)

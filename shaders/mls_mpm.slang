@@ -187,9 +187,7 @@ void ScatterForce(uint3 tid : SV_DispatchThreadID, uniform Sim_PC pc)
     if (density <= 1e-10) return;
 
     float volume = p.mass / max(density, 1e-6);
-    float pressure = max(-0.05,
-        par->eosStiffness * (pow(density / par->restDensity, par->eosPower) - 1.0)
-    );
+    float pressure = max(-0.1, par->eosStiffness * (pow(density / par->restDensity, par->eosPower) - 1.0));
     float3x3 stress = -pressure * float3x3(1,0,0, 0,1,0, 0,0,1);
     C = 0.5 * (C + transpose(C));
     stress += par->dynamicViscosity * C;

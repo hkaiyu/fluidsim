@@ -37,7 +37,7 @@ VSOut vsMain(uint vid : SV_VertexID)
         float2(-1,  1)
     };
 
-    const float particleRadius = 0.75f;
+    const float particleRadius = 1.0f;
 
     float2 quad = corners[cornerID];
 

@@ -68,7 +68,7 @@ CmdBeginRendering(VkCommandBuffer cmd, const RenderInfo& renderInfo)
         return (p[0] | p[1]) == 0; // checks if both extent and offset are completely zero
     };
 
-    VkRect2D renderArea;
+    VkRect2D renderArea = renderInfo.renderArea;
     if (IsRectZero(renderArea)) // user did not provide a renderArea -> use image's full extent
     {
         const RenderAttachmentInfo* attach = renderInfo.colorAttachments.begin();
